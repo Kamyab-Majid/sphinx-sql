@@ -172,18 +172,16 @@ class SqlDirective(Directive):
         """Extract Table Columns and their metadata
         from DDL code.
         """
-
+        
         # Extract just create and everything below (removes pg_dump meta info)
         contents = self.objtable.search(contents).group()
-
         # Get DDL and clean content for ddlparse
         if len(self.top_comments.findall(contents)) > 0:
             # If Top Level Comment exists
             top_comments = self.top_comments.findall(contents)[0]
-
             # Remove Top Level Comment to parse plain DDL
             ddl = contents.replace(top_comments, "")
-
+            print('ddl objconstraints   ',self.objconstraints.findall(ddl))
             if len(self.objconstraints.findall(ddl)) > 0:
                 # Remove Constraints because Check Constraints
                 # cannot be parsed properly by ddlparse
@@ -279,6 +277,10 @@ class SqlDirective(Directive):
                         object_details["partition_key"] = part
                         if config.sphinxsql_include_table_attributes:
                             try:
+                                # content = all the code
+                                # t1         stg.stg_fc_center_info 
+                                # t2 stg 
+                                # t3          stg_fc_center_info
                                 object_details["cols"] = self.extract_columns(
                                     contents, sql_type[2], sql_type[3]
                                 )
@@ -427,6 +429,7 @@ class SqlDirective(Directive):
 
         if core_text.type in {"FUNCTION", "PROCEDURE"}:
             if core_text.type == "FUNCTION":
+                print(core_text.comments)
                 section += n.line(
                     "RETURNS: {}".format(core_text.comments.return_type),
                     "RETURNS: {}".format(core_text.comments.return_type),
@@ -439,7 +442,10 @@ class SqlDirective(Directive):
             section += n.line("", "")
             section += n.line("PARAMETERS:", "PARAMETERS:")
             # The first row is treated as table header
-            if len(core_text.comments.param) > 1:
+            if core_text.comments is None:
+                section += n.line("None", "None")
+                section += n.line("", "")
+            elif len(core_text.comments.param) > 1:
                 ptable = ""
                 try:
                     ptable = self.build_table(
